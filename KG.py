@@ -321,6 +321,7 @@ def main():
             plotly_chart(fig, use_container_width=True, height=600)
         else:
             st.info("No relationships to visualize yet. Upload a document to create the knowledge graph.")
+    st.markdown("Created by Mohammad Unaib")
 
 if __name__ == "__main__":
     main()
