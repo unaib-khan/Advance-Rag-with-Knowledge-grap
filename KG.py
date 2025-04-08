@@ -12,7 +12,6 @@ import networkx as nx
 from pyvis.network import Network
 import tempfile
 import plotly.graph_objects as go
-# from streamlit_plotly import plotly_chart
 from streamlit import plotly_chart
 
 import base64
@@ -60,16 +59,14 @@ llm = ChatGroq(
     model_name="mixtral-8x7b-32768"
 )
 
-# Neo4j Configuration
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "YourPassword"
-
 class KnowledgeGraphRAG:
-    def __init__(self):
+    def __init__(self, neo4j_uri: str, neo4j_user: str, neo4j_password: str):
+        self.neo4j_uri = neo4j_uri
+        self.neo4j_user = neo4j_user
+        self.neo4j_password = neo4j_password
         self.driver = GraphDatabase.driver(
-            NEO4J_URI,
-            auth=(NEO4J_USER, NEO4J_PASSWORD)
+            self.neo4j_uri,
+            auth=(self.neo4j_user, self.neo4j_password)
         )
         self.embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-mpnet-base-v2"
@@ -89,9 +86,9 @@ class KnowledgeGraphRAG:
         vector_store = Neo4jVector.from_documents(
             documents,
             self.embeddings,
-            url=NEO4J_URI,
-            username=NEO4J_USER,
-            password=NEO4J_PASSWORD,
+            url=self.neo4j_uri,
+            username=self.neo4j_user,
+            password=self.neo4j_password,
             index_name="document_vectors",
             node_label="Document",
             embedding_node_property="embedding",
@@ -222,9 +219,9 @@ class KnowledgeGraphRAG:
         """Query both vector store and knowledge graph"""
         vector_store = Neo4jVector(
             self.embeddings,
-            url=NEO4J_URI,
-            username=NEO4J_USER,
-            password=NEO4J_PASSWORD,
+            url=self.neo4j_uri,
+            username=self.neo4j_user,
+            password=self.neo4j_password,
             index_name="document_vectors"
         )
         retriever = vector_store.as_retriever()
@@ -255,13 +252,17 @@ class KnowledgeGraphRAG:
 def main():
     st.title("Advanced RAG System with Knowledge Graph")
     
-    # Initialize system
-    rag_system = KnowledgeGraphRAG()
-    
-    # Sidebar for controls
+    # Sidebar for configuration and controls
     with st.sidebar:
+        st.header("Neo4j Configuration")
+        neo4j_uri = st.text_input("Neo4j URI", value="bolt://localhost:7687")
+        neo4j_user = st.text_input("Neo4j User", value="neo4j")
+        neo4j_password = st.text_input("Neo4j Password", value="YourPassword", type="password")
+        
         st.header("Controls")
         if st.button("🗑️ Delete Database", help="Clear all data and start fresh"):
+            # Initialize system with the provided configuration
+            rag_system = KnowledgeGraphRAG(neo4j_uri, neo4j_user, neo4j_password)
             with st.spinner("Deleting database..."):
                 rag_system.delete_database()
             st.success("Database cleared successfully!")
@@ -269,6 +270,9 @@ def main():
         st.markdown("---")
         st.markdown("### 📊 Graph Settings")
         st.markdown("Customize your graph visualization here")
+    
+    # Initialize system (using the current sidebar settings)
+    rag_system = KnowledgeGraphRAG(neo4j_uri, neo4j_user, neo4j_password)
     
     # Main content area
     col1, col2 = st.columns([2, 1])
@@ -294,6 +298,7 @@ def main():
                 )
                 splits = text_splitter.split_documents(documents)
                 
+                # Create vector store and knowledge graph
                 rag_system.create_vector_store(splits)
                 rag_system.create_knowledge_graph(splits)
             st.success("✅ Document processed successfully!")
