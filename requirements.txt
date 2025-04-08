@@ -7,3 +7,4 @@ plotly==5.8.0
 pyvis==0.3.2
 networkx==3.4.2
 langchain-community==0.3.16
+sentence-transformers==3.3.1
